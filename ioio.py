@@ -738,7 +738,7 @@ NO
 # =========================
 # IMPORTANT: put your token here AFTER revoking the exposed one in BotFather
 
-TELEGRAM_TOKEN = "8660010398:AAEUs7oNHLu1cpZUhRakU406_ly6IsjjPV4"
+TELEGRAM_TOKEN = "yourtokenhere"
 
 def run_telegram():
     try:
