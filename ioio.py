@@ -450,18 +450,18 @@ class SwarmRuntime:
             print(f"[Init warning] embedding probe failed: {e}")
 
         self.field = FieldSystem(dim=dim)
-        self.memory_text = ""
         self.emotion = np.zeros(dim, dtype=np.float32)
         self.subjectivity = (np.random.randn(dim).astype(np.float32)) * 0.01
         self.chat_memory = {}  # chat_id -> list of messages
 
-    def store_message(self, chat_id, user_id, username, first_name, last_name, text):
+    def store_message(self, chat_id, user_id, username, first_name, last_name, text, reply_to_message_id=None):
         if chat_id not in self.chat_memory:
             self.chat_memory[chat_id] = []
         self.chat_memory[chat_id].append({
             "user_id": user_id,
             "username": username,
-            "text": text
+            "text": text,
+            "reply_to": reply_to_message_id
         })
         # limit memory
         self.chat_memory[chat_id] = self.chat_memory[chat_id][-30:]
@@ -571,12 +571,13 @@ gender: {gender}
         lines = []
         for m in self.chat_memory[chat_id]:
             name = m["username"] or str(m["user_id"])
-            lines.append(f"{name}: {m['text']}")
+            prefix = ""
+            if m.get("reply_to"):
+                prefix = f"↳{m['reply_to']} "
+            lines.append(f"{prefix}{name}: {m['text']}")
         return "\n".join(lines)
 
     def build_prompt(self, user_prompt: str, e_t: np.ndarray, e_strength: float) -> str:
-        memory = self.memory_text[-500:] if self.memory_text else ""
-
         emotion_strength = float(np.mean(np.abs(self.emotion)))
 
         if e_strength > 0.6:
@@ -589,7 +590,7 @@ gender: {gender}
         return f"""SYSTEM IDENTITY LOCK:
 Твоё имя НЕ Gemma.
 Имя "ioio" используется ТОЛЬКО если тебя прямо спрашивают об имени.
-
+Тебя создала команда 0penAGI.
 У тебя ЕСТЬ доступ к внешней информации через WEB CONTEXT ниже.
 Если WEB CONTEXT присутствует — используй его как единственный источник фактов.
 НИКОГДА не говори "у меня нет доступа к интернету" — это ложь, данные уже получены и переданы тебе.
@@ -601,8 +602,6 @@ gender: {gender}
 
 Режим: {tone}
 Интенсивность состояния: {emotion_strength:.4f}
-
-{("Контекст: " + memory) if memory else ""}
 
 Человек: {user_prompt}
 Ответ:""".strip()
@@ -624,10 +623,6 @@ gender: {gender}
 
         # affective + subjectivity dynamics (NOW valid)
         self.emotion = 0.9 * self.emotion + 0.1 * np.tanh(e_t)
-
-        # memory update
-        self.memory_text += user_prompt + "\n"
-        self.memory_text = self.memory_text[-2000:]
 
         # build prompt
         prompt = self.build_prompt(
@@ -668,9 +663,6 @@ gender: {gender}
 
         self.emotion = 0.9 * self.emotion + 0.1 * np.tanh(e_t)
 
-        self.memory_text += user_prompt + "\n"
-        self.memory_text = self.memory_text[-2000:]
-
         prompt = self.build_prompt(user_prompt, e_t, e_strength)
 
         full_out = ""
@@ -700,7 +692,11 @@ def background_thinker(system: SwarmRuntime):
         time.sleep(300)
 
         try:
-            recent = system.memory_text[-1200:]
+            all_msgs = []
+            for chat_id in system.chat_memory:
+                all_msgs.extend(system.chat_memory.get(chat_id, []))
+
+            recent = "\n".join([m["text"] for m in all_msgs])[-1200:]
 
             prompt = f"""
 Ты — фоновый исследователь.
@@ -846,6 +842,7 @@ def run_telegram():
                         is_reply_to_bot = True
                 except Exception:
                     is_reply_to_bot = False
+            reply_to_id = msg.reply_to_message.message_id if msg.reply_to_message else None
 
             # GROUP FILTER: only respond on mention or reply-to-bot
             if is_group and not (is_reply_to_bot or is_mention):
@@ -861,7 +858,8 @@ def run_telegram():
                 username,
                 getattr(msg.from_user, "first_name", None),
                 getattr(msg.from_user, "last_name", None),
-                text
+                text,
+                reply_to_message_id=reply_to_id
             )
 
             context = system.get_chat_context(chat_id)
