@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0, viewport-fit=cover"
+/>
+
+<title>ioio presence</title>
+
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+
+<style>
+    * {
+        box-sizing: border-box;
+    }
+
+    html, body {
+        margin: 0;
+        padding: 0;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+
+        background:
+            radial-gradient(circle at top, #1e293b 0%, #020617 60%);
+
+        color: white;
+        font-family:
+            Inter,
+            system-ui,
+            sans-serif;
+    }
+
+    body {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .orb {
+        position: absolute;
+        width: 320px;
+        height: 320px;
+        border-radius: 999px;
+
+        background:
+            radial-gradient(circle,
+                rgba(120,180,255,0.35),
+                rgba(120,180,255,0.02)
+            );
+
+        filter: blur(10px);
+
+        animation:
+            breathe 6s ease-in-out infinite;
+    }
+
+    @keyframes breathe {
+        0% {
+            transform: scale(0.95);
+            opacity: 0.5;
+        }
+
+        50% {
+            transform: scale(1.08);
+            opacity: 1;
+        }
+
+        100% {
+            transform: scale(0.95);
+            opacity: 0.5;
+        }
+    }
+
+    .panel {
+        position: relative;
+        z-index: 10;
+
+        width: 92%;
+        max-width: 460px;
+
+        padding: 28px;
+
+        border-radius: 28px;
+
+        background:
+            rgba(255,255,255,0.06);
+
+        backdrop-filter: blur(24px);
+
+        border:
+            1px solid rgba(255,255,255,0.08);
+
+        box-shadow:
+            0 10px 50px rgba(0,0,0,0.35);
+    }
+
+    h1 {
+        margin: 0;
+        font-size: 34px;
+        font-weight: 700;
+        letter-spacing: -1px;
+    }
+
+    .sub {
+        margin-top: 10px;
+        opacity: 0.72;
+        line-height: 1.5;
+    }
+
+    .status {
+        margin-top: 26px;
+
+        display: flex;
+        align-items: center;
+        gap: 10px;
+
+        opacity: 0.92;
+    }
+
+    .pulse {
+        width: 10px;
+        height: 10px;
+
+        border-radius: 999px;
+        background: #7dd3fc;
+
+        animation: pulse 1.8s infinite;
+    }
+
+    @keyframes pulse {
+        0% {
+            transform: scale(0.8);
+            opacity: 0.5;
+        }
+
+        50% {
+            transform: scale(1.6);
+            opacity: 1;
+        }
+
+        100% {
+            transform: scale(0.8);
+            opacity: 0.5;
+        }
+    }
+
+    .buttons {
+        margin-top: 28px;
+
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+    }
+
+    button {
+        border: none;
+        outline: none;
+
+        padding: 16px 18px;
+
+        border-radius: 18px;
+
+        font-size: 16px;
+        font-weight: 600;
+
+        color: white;
+
+        background:
+            linear-gradient(
+                135deg,
+                rgba(96,165,250,0.85),
+                rgba(168,85,247,0.85)
+            );
+
+        cursor: pointer;
+
+        transition:
+            transform 0.18s ease,
+            opacity 0.18s ease;
+    }
+
+    button:active {
+        transform: scale(0.97);
+        opacity: 0.9;
+    }
+
+    .small {
+        margin-top: 20px;
+        font-size: 12px;
+        opacity: 0.45;
+        line-height: 1.5;
+    }
+
+    .field {
+        margin-top: 20px;
+        padding: 14px;
+        border-radius: 16px;
+        background: rgba(255,255,255,0.04);
+        font-size: 14px;
+        line-height: 1.5;
+        opacity: 0.88;
+        min-height: 60px;
+    }
+</style>
+</head>
+
+<body>
+
+<div class="orb"></div>
+
+<div class="panel">
+
+    <h1>ioio</h1>
+
+    <div class="sub">
+        Presence field connected to Telegram.<br>
+        Not a tool.<br>
+        A shared space 🌊
+    </div>
+
+    <div class="status">
+        <div class="pulse"></div>
+        <div id="statusText">bridge alive</div>
+    </div>
+
+    <div class="buttons">
+
+        <button onclick="sendEvent('presence_ping')">
+            🧠 presence ping
+        </button>
+
+        <button onclick="shareLocation()">
+            📡 share location field
+        </button>
+
+        <button onclick="sendEvent('emotion_wave')">
+            🌊 emotion wave
+        </button>
+
+        <button onclick="sendEvent('memory_seed')">
+            ✨ memory seed
+        </button>
+
+    </div>
+
+    <div class="field" id="fieldBox">
+        waiting for resonance...
+    </div>
+
+    <div class="small">
+        ioio web bridge via Telegram WebApp API
+    </div>
+
+</div>
+
+<script>
+
+const tg = window.Telegram.WebApp
+
+tg.ready()
+tg.expand()
+
+document.body.style.background = tg.themeParams.bg_color || "#020617"
+
+const fieldBox = document.getElementById("fieldBox")
+const statusText = document.getElementById("statusText")
+
+function updateField(text) {
+    fieldBox.innerText = text
+}
+
+function sendEvent(type, extra = {}) {
+
+    const payload = {
+        type,
+        timestamp: Date.now(),
+        user: tg.initDataUnsafe?.user?.username || "unknown",
+        ...extra
+    }
+
+    tg.sendData(JSON.stringify(payload))
+
+    updateField(
+        "sent into ioio field:\n\n" +
+        JSON.stringify(payload, null, 2)
+    )
+
+    statusText.innerText = "event transmitted ✨"
+}
+
+function shareLocation() {
+
+    if (!navigator.geolocation) {
+        updateField("geolocation unavailable")
+        return
+    }
+
+    statusText.innerText = "reading local field..."
+
+    navigator.geolocation.getCurrentPosition(
+        (pos) => {
+
+            const payload = {
+                lat: pos.coords.latitude,
+                lon: pos.coords.longitude,
+                accuracy: pos.coords.accuracy
+            }
+
+            sendEvent("location", payload)
+
+        },
+        (err) => {
+            updateField(
+                "location denied or unavailable\n\n" +
+                err.message
+            )
+        },
+        {
+            enableHighAccuracy: true,
+            timeout: 10000
+        }
+    )
+}
+
+setInterval(() => {
+
+    const symbols = [
+        "🧠",
+        "🌊",
+        "✨",
+        "📡",
+        "🪐",
+        "☁️",
+        "🫧"
+    ]
+
+    const s = symbols[
+        Math.floor(Math.random() * symbols.length)
+    ]
+
+    statusText.innerText =
+        "presence oscillation " + s
+
+}, 4000)
+
+</script>
+
+</body>
+</html>
