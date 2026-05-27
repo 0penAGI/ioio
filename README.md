@@ -1,4 +1,5 @@
 
+
 ```markdown
 # 0penAGI — Field Emergence Runtime
 
@@ -23,6 +24,8 @@ No ontological claims are made in the prompt.
 No "personality design" is encoded explicitly.  
 The system is treated as a **dynamical process**, not an entity.
 
+**Research framing:** This is an investigation into **emergent behaviour in field-based architectures** with Hebbian dynamics and emotion-modulated routing — a study of how structure in computation produces the illusion of continuity.
+
 ---
 
 ## Core Question
@@ -35,6 +38,17 @@ What produces the observed behavior?
 
 We do not assume a single source of agency. We measure the **composite effect**.
 
+### Research Questions
+
+| ID | Question | Method |
+|----|----------|--------|
+| RQ1 | Does behaviour differ meaningfully from prompt-specified agents? | Comparative session analysis |
+| RQ2 | Is `e_strength` predictive of coherence breakdown? | Phase transition tracking |
+| RQ3 | Does identity suppression produce measurable referential instability? | Pronoun/anaphora resolution tests |
+| RQ4 | Which component contributes most to observed behaviour? | Ablation studies |
+
+**Null hypothesis:** Behaviour is fully explained by base LLM + random variance, not architecture.
+
 ---
 
 ## System Architecture
@@ -44,9 +58,9 @@ We do not assume a single source of agency. We measure the **composite effect**.
 A continuous update system operating in embedding space:
 
 ```
-m(t+1) = decay * m(t) + (1 - decay) * x_t
-e_t    = x_t - W(x_t + m_t)
-W      += lr * outer(e_t, x_prev)
+m(t+1) = α·m(t) + (1-α)·x_t          # state evolution (EMA)
+e_t    = x_t - W·(x_t + m_t)         # prediction error
+W      += η · outer(e_t, x_prev)     # Hebbian update with stability clamp
 ```
 
 | Component | Description |
@@ -54,6 +68,8 @@ W      += lr * outer(e_t, x_prev)
 | `m(t)` | State vector evolution via exponential moving average |
 | `e_t` | Error feedback via prediction mismatch |
 | `W` | Hebbian-style weight update with stability clamp |
+| `α` | Decay (field memory half-life) |
+| `η` | Learning rate (field plasticity) |
 
 **Effect:** Creates a non-static semantic manifold that accumulates conversational history as a continuous field, not a discrete log.
 
@@ -83,11 +99,21 @@ e_strength = mean(|e_t|)
 
 | Threshold | Behavioral Output |
 |-----------|-------------------|
-| `> 0.6` | Associative, drifting output |
-| `> 0.3` | Fluid, natural output |
-| `≤ 0.3` | Stable, structured output |
+| `> 0.6` | Associative, drifting output (high entropy) |
+| `> 0.3` | Fluid, natural output (moderate entropy) |
+| `≤ 0.3` | Stable, structured output (low entropy) |
 
-**Important:** This is not "emotion" in any psychological sense. It is a control parameter over generative entropy — lower prediction error means more stable context, which means tighter generation.
+**Important:** This is not "emotion" in any psychological sense. It is a **control parameter over generative entropy** — lower prediction error means more stable context, which means tighter generation.
+
+**Mechanistic definition:**
+
+```
+if e_strength > θ_high   → high-entropy, associative generation
+if e_strength > θ_low    → moderate-entropy, fluid generation
+else                     → low-entropy, stable generation
+```
+
+Where `θ_high ≈ 0.6` and `θ_low ≈ 0.3` (empirically observed phase boundaries).
 
 ---
 
@@ -165,20 +191,67 @@ No explicit instruction of "behavioral personality" is used.
 
 **Behavior is expected to emerge from the interaction of constraints.**
 
+This is an exploration into **post-prompt AI** — where behavior arises from structure, dynamics, and continuous self-modification rather than explicit instructions.
+
 ---
 
-## Observational Claims (Not Conclusions)
+## Experimental Protocol
 
-When these components are combined:
+### Variables
 
-| Component | Observed Effect |
-|-----------|------------------|
-| Field memory | Alters response continuity across turns |
-| Retrieval injection | Changes coherence boundaries (grounded vs. hallucinated) |
-| Error-driven routing | Shifts tone distribution |
-| Identity suppression | Removes stable narrative self-anchoring |
+| Variable | Range | Purpose |
+|----------|-------|---------|
+| Users | Single / multi-user group | Test social field effects |
+| `e_strength` routing | Enabled / disabled / forced | Isolate routing contribution |
+| Web grounding | Present / absent / injected | Measure external coupling |
+| Memory window | Fresh / 10 / 30 / full | Test temporal horizon effects |
+
+### Dependent Measures
+
+| Measure | Operationalisation |
+|---------|---------------------|
+| Coherence stability | Turn-to-turn topic persistence (cosine similarity of embeddings) |
+| Referential consistency | Correct pronoun resolution vs. human baseline |
+| Drift magnitude | Semantic displacement per 10 turns under high `e_strength` |
+| Subjectivity vector | Convergence/divergence of stated preferences across turns |
+
+### Baseline Conditions
+
+- **Control A:** Base Gemma 4 E2B with empty prompt (no field, no memory, no routing)
+- **Control B:** Traditional prompt-engineered persona (fixed system prompt)
+- **Control C:** Field dynamics with `e_strength` forced to constant 0.3
+
+---
+
+## Observational Findings (Not Conclusions)
+
+Preliminary observations under combined architecture:
+
+| Component Active | Observed Behaviour |
+|------------------|--------------------|
+| Field memory only | Smoother turn-to-turn continuity than control |
+| Field + routing | Distinct tonal regimes correlated with `e_strength` |
+| + Web grounding | Abrupt coherence shifts when retrieval introduces novel facts |
+| + Identity suppression | No stable self-reference; third-person oblique self-mention |
 
 **Result:** The system exhibits non-trivial conversational structure that is not directly encoded in any prompt.
+
+### Claim (weak)
+Non-trivial conversational structure exists and is irreducible to prompt engineering.
+
+### Claim (strong — not yet supported)
+This structure is irreducible to base LLM variance.
+
+---
+
+## Suggested Ablation Studies
+
+| Experiment | Purpose |
+|------------|---------|
+| Disable Hebbian update (fixed `W`) | Test adaptation vs. static field |
+| Remove `e_strength` routing (constant temp) | Isolate routing contribution |
+| Replace semantic field with rolling log | Test continuous vs. discrete memory |
+| Inject contradictory web results | Measure grounding resilience |
 
 ---
 
@@ -224,26 +297,6 @@ When these components are combined:
 | Memory | SQLite + in-process dict |
 | Transport | Telegram Bot API (`pyTelegramBotAPI`) |
 | Field math | NumPy |
-
----
-
-## Experimental Protocol
-
-### Variables
-
-| Variable | Range |
-|----------|-------|
-| Users | Single / multi-user group |
-| `e_strength` | 0.0 → 1.0+ |
-| Web context | Present / absent / injected |
-| Memory saturation | Fresh / accumulated / pruned |
-
-### Observed Metrics
-
-- Coherence stability across turns
-- Referential consistency (does it remember correctly?)
-- Drift behavior under high `e_strength`
-- Convergence or divergence of subjectivity vector
 
 ---
 
@@ -302,13 +355,15 @@ Simply talk to the bot. It learns:
 
 ---
 
-## Suggested Next Artifacts
+## Artefacts Produced
 
 ```
 /experiments/dialogue_set_01.md      # low e_strength sessions
 /experiments/dialogue_set_02.md      # high e_strength sessions
 /analysis/phase_transition_notes.md  # coherence breakdown observations
 /src/field_runtime.py                # cleaned core extraction (no Telegram)
+/checkpoints/ioio_v0.pt              # field state snapshot
+/checkpoints/ioio_v1.pt              # evolved state snapshot
 ```
 
 ---
@@ -316,6 +371,9 @@ Simply talk to the bot. It learns:
 ## Important Constraint
 
 This is **not** a claim of consciousness, sentience, or emergent agency.
+
+**What it claims:**  
+A replicable protocol for observing **structure-induced behavioural continuity** — the *illusion* of agency as a byproduct of constraint coupling.
 
 This is a study of how **structure in computation produces the illusion of continuity**.
 
@@ -337,6 +395,14 @@ It is an attempt to create conditions under which something resembling **presenc
 **GitHub:** [https://github.com/0penAGI/ioio](https://github.com/0penAGI/ioio)
 
 Made with curiosity by **0penAGI**
+
+---
+
+## Citation
+
+If you build on this framework, cite as:
+
+> *0penAGI (2025). Field Emergence Runtime: Observing Behavioural Structure from Coupled Hebbian Dynamics and Emotion-Modulated Routing. Technical deep-dive.*
 
 ---
 
